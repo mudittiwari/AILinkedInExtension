@@ -2,6 +2,7 @@ import icon from "~/assets/icon.png";
 import generate from "~/assets/generate.png";
 import insert from "~/assets/insert.png";
 import regenerate from "~/assets/regenerate.png";
+import micIcon from "~/assets/mic.png";
 import "~/assets/tailwind.css";
 export default defineContentScript({
   matches: ["*://*.linkedin.com/*"],
@@ -58,6 +59,7 @@ const openModal = (): void => {
       modal.remove();
     }
   });
+  restoreMessagesFromSession();
   addPromptFieldEventListner();
   addGenerateButtonEventListner();
   addInsertButtonEventListner();
@@ -65,6 +67,10 @@ const openModal = (): void => {
 };
 
 const addPromptFieldEventListner = (): void => {
+  showHideGenerateButton();
+};
+
+const showHideGenerateButton = (): void=>{
   const generateBtn = document.getElementById(
     "generate-btn"
   ) as HTMLButtonElement;
@@ -80,7 +86,7 @@ const addPromptFieldEventListner = (): void => {
       }
     });
   }
-};
+}
 
 const addGenerateButtonEventListner = (): void => {
   document.getElementById("generate-btn")?.addEventListener("click", async () => {
@@ -120,7 +126,6 @@ const addGenerateButtonEventListner = (): void => {
       const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
       const regenerateBtn = document.getElementById("regenerate-btn") as HTMLButtonElement;
 
-      generateBtn.classList.add("hidden");
       insertBtn.classList.remove("hidden");
       regenerateBtn.classList.remove("hidden");
       try {
@@ -136,6 +141,9 @@ const addGenerateButtonEventListner = (): void => {
         serverMessage.textContent = serverResponse;
       } catch (error) {
         serverMessage.textContent = "Error while connecting to the server.";
+      }
+      if(serverMessage.textContent){
+        saveMessagesToSession(userPrompt,serverMessage.textContent);
       }
       (document.getElementById("ai-command") as HTMLInputElement).value = "";
       chatContainer?.scrollTo(0, chatContainer.scrollHeight);
@@ -196,7 +204,11 @@ const addRegenerateButtonEventListner = (): void => {
     if (userPrompt) {
       const chatContainer = document.getElementById("chat-container");
 
-      // Create and append user message
+      const serverMessages = chatContainer?.querySelectorAll(".self-start");
+      let lastServerMessage = "";
+      if (serverMessages && serverMessages.length > 0) {
+        lastServerMessage = serverMessages[serverMessages.length - 1].textContent || "";
+      }
       const userMessage = document.createElement("div");
       userMessage.className = `
         self-end p-3 rounded-lg max-w-[70%] break-words 
@@ -204,8 +216,6 @@ const addRegenerateButtonEventListner = (): void => {
       `;
       userMessage.textContent = userPrompt;
       chatContainer?.appendChild(userMessage);
-
-      // Create and append server message with loading animation
       const serverMessage = document.createElement("div");
       serverMessage.className = `
         self-start p-3 rounded-lg max-w-[70%] break-words 
@@ -227,7 +237,7 @@ const addRegenerateButtonEventListner = (): void => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ prompt: userPrompt }),
+          body: JSON.stringify({ prompt:lastServerMessage+"........"+userPrompt }),
         });
         if (response.ok) {
           const data = await response.json();
@@ -238,6 +248,9 @@ const addRegenerateButtonEventListner = (): void => {
         }
       } catch (error) {
         serverMessage.textContent = "Error while connecting to the server.";
+      }
+      if(serverMessage.textContent){
+        saveMessagesToSession(userPrompt,serverMessage.textContent);
       }
       (document.getElementById("ai-command") as HTMLInputElement).value = "";
       chatContainer?.scrollTo(0, chatContainer.scrollHeight);
@@ -252,26 +265,31 @@ const createModal = (): HTMLElement => {
   modal.className =
     "fixed inset-0 w-full h-full z-[100] bg-black bg-opacity-50 flex justify-center items-center";
   const modalContent = document.createElement("div");
-  modalContent.className = `p-6 rounded-lg shadow-lg space-y-4 w-1/2`;
+  modalContent.className = `p-6 rounded-lg shadow-lg space-y-4 w-1/2 min-w-[350px]`;
   modalContent.style.cssText = `
     background-color:#F9FAFB;  
   `;
   modalContent.innerHTML = `
   <div id="chat-container" class="flex flex-col space-y-4 mb-4 overflow-y-auto max-h-72"></div>
-    <input id="ai-command" type="text" style="outline:none;border:0px solid black;" placeholder="Your Promt" class="w-full p-2 rounded-md" />
+    <div class="flex justify-between">
+    <input id="ai-command" type="text" style="outline:none;border:0px solid black;" placeholder="Your Promt" class="p-2 rounded-md w-full mr-3" />
+     <button title="Press and hold for recording audio." id="mic-btn" class="bg-gray-200 rounded-full p-2 w-[32px] flex justify-center items-center">
+        <img src="${micIcon}" alt="Mic" class="w-6 h-6" />
+      </button>
+    </div>
     <div class="flex space-x-2 justify-end w-full">
-      <button id="generate-btn" disabled class="bg-[#3B82F6] pl-[30px] bg-no-repeat bg-[length:15px] text-white py-2 px-4 rounded cursor-not-allowed opacity-50" style="
+      <button title="Use for starting new conversation" id="generate-btn" disabled class="bg-[#3B82F6] pl-[30px] bg-no-repeat bg-[length:15px] text-white py-2 px-4 rounded cursor-not-allowed opacity-50" style="
         background-image: url(${generate});
         background-position: left 10px center;
       ">Generate</button>
 
-      <button id="insert-btn" class="bg-white text-[#666D80] pl-[30px] bg-no-repeat bg-[length:15px] hidden py-2 px-4 rounded focus:outline-none" style="
+      <button title="Use for inserting last server message into chat" id="insert-btn" class="bg-white text-[#666D80] pl-[30px] bg-no-repeat bg-[length:15px] hidden py-2 px-4 rounded focus:outline-none" style="
         background-image: url(${insert});
         background-position: left 10px center;
         border:1px solid #666D80;
       ">Insert</button>
 
-      <button id="regenerate-btn" class="bg-[#3B82F6] bg-no-repeat bg-[length:15px] pl-[30px] hidden text-white py-2 px-4 rounded" style="
+      <button title="Use for using last message for next conversation" id="regenerate-btn" class="bg-[#3B82F6] bg-no-repeat bg-[length:15px] pl-[30px] hidden text-white py-2 px-4 rounded" style="
         background-image: url(${regenerate});
         background-position: left 10px center;
       ">Regenerate</button>
@@ -279,5 +297,65 @@ const createModal = (): HTMLElement => {
 `;
 
   modal.appendChild(modalContent);
+
+
+  const micBtn = modalContent.querySelector("#mic-btn") as HTMLButtonElement;
+  const aiCommandInput = modalContent.querySelector("#ai-command") as HTMLInputElement;
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    micBtn.addEventListener("mousedown", () => {
+      recognition.start();
+    });
+
+    micBtn.addEventListener("mouseup", () => {
+      recognition.stop();
+    });
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      aiCommandInput.value += transcript;
+      const inputEvent = new Event('input', { bubbles: true });
+      aiCommandInput.dispatchEvent(inputEvent);
+    };
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+    };
+  } else {
+    console.error("Speech recognition not supported in this browser.");
+  }
   return modal;
+};
+
+
+const saveMessagesToSession = (userMessage: string, serverMessage: string): void => {
+  let chatHistory = JSON.parse(sessionStorage.getItem('chatHistory') || '[]');
+  chatHistory.push({ userMessage, serverMessage });
+  sessionStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+  console.log(chatHistory);
+};
+
+const restoreMessagesFromSession = (): void => {
+  const chatHistory = JSON.parse(sessionStorage.getItem('chatHistory') || '[]');
+  console.log(chatHistory);
+  const chatContainer = document.getElementById("chat-container");
+  chatHistory.forEach(({ userMessage, serverMessage }: { userMessage: string, serverMessage: string }) => {
+    const userMessageDiv = document.createElement("div");
+    userMessageDiv.className = `
+      self-end p-3 rounded-lg max-w-[70%] break-words 
+      bg-[#DFE1E7] text-[#666D80]
+    `;
+    userMessageDiv.textContent = userMessage;
+    chatContainer?.appendChild(userMessageDiv);
+    const serverMessageDiv = document.createElement("div");
+    serverMessageDiv.className = `
+      self-start p-3 rounded-lg max-w-[70%] break-words 
+      bg-[#DBEAFE] text-[#666D80]
+    `;
+    serverMessageDiv.textContent = serverMessage;
+    chatContainer?.appendChild(serverMessageDiv);
+  });
+
+  chatContainer?.scrollTo(0, chatContainer.scrollHeight);
 };

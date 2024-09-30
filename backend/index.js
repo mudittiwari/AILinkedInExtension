@@ -7,7 +7,7 @@ app.use(express.json())
 
 app.post("/prompt", async(req, res) => {
   const promptMessage = req.body.prompt;
-  const response = await fetch('https://api.cloudflare.com/client/v4/accounts/77c5ed683454ca076e50a720e17e3115/ai/run/@cf/google/gemma-7b-it-lora', {
+  const response = await fetch('https://api.cloudflare.com/client/v4/accounts/77c5ed683454ca076e50a720e17e3115/ai/run/@cf/meta/llama-2-7b-chat-int8', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
