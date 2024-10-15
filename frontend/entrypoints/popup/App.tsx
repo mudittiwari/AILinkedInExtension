@@ -1,34 +1,18 @@
-import { useState } from 'react';
-import reactLogo from '@/assets/react.svg';
-import wxtLogo from '/wxt.svg';
 import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0);
 
   return (
     <>
-      <div>
-        <h1 className='text-blue-500'>hello world</h1>
-        <a className='bg-black' href="https://wxt.dev" target="_blank">
-          <img src={wxtLogo} className="logo" alt="WXT logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
+        <header className="mb-10 text-center">
+          <h1 className="text-4xl font-bold text-blue-600">LinkedIn AI Chatbot</h1>
+          <p className="text-lg text-gray-700 mt-2">Enhance your LinkedIn experience with AI assistance and voice commands</p>
+        </header>
+        <footer className="mt-10">
+          <p className="text-gray-500 text-center">For more details, visit the extension <a href="https://github.com/mudittiwari/AILinkedInExtension">Github Repository</a></p>
+        </footer>
       </div>
-      <h1>WXT + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the WXT and React logos to learn more
-      </p>
     </>
   );
 }
